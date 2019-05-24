@@ -69,12 +69,12 @@ public class ProcessHelper {
         readStream(process.getInputStream(), c -> { 
             System.out.print(c);
             System.out.flush();
-            result.stdout += c
+            result.stdout += c;
         });
         readStream(process.getErrorStream(), c -> {
             System.err.print(c);
             System.err.flush();
-            result.stderr += c
+            result.stderr += c;
         });
 
         try {
