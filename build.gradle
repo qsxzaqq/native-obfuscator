@@ -81,6 +81,7 @@ test {
             }
             System.out.println("Test fail log");
             System.out.print(testOutputs.get(descriptor.getName()).toString());
+            System.out.flush();
             testOutputs.remove(descriptor.getName());
             if (System.getenv("CI"))
                 System.out.println("travis_fold:end:fail_log");   
@@ -91,6 +92,8 @@ test {
         if (!testOutputs.containsKey(descriptor.getName()))
             testOutputs.put(descriptor.getName(), new StringBuilder());
         testOutputs.get(descriptor.getName()).append("[").append(event.getDestination().toString().toUpperCase()).append("] ").append(event.getMessage());
+        System.out.print("[" + event.getDestination().toString().toUpperCase() + "]" + event.getMessage());
+        System.out.flush();
     }
 }
 
