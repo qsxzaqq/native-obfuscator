@@ -66,8 +66,16 @@ public class ProcessHelper {
         ProcessResult result = new ProcessResult();
         result.commandLine = String.join(" ", command);
 
-        readStream(process.getInputStream(), c -> result.stdout += c);
-        readStream(process.getErrorStream(), c -> result.stderr += c);
+        readStream(process.getInputStream(), c -> { 
+            System.out.print(c);
+            System.out.flush();
+            result.stdout += c
+        });
+        readStream(process.getErrorStream(), c -> {
+            System.err.print(c);
+            System.err.flush();
+            result.stderr += c
+        });
 
         try {
             if (!process.waitFor(timeLimit, TimeUnit.MILLISECONDS)) {
