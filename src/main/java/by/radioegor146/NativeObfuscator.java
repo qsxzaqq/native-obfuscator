@@ -21,7 +21,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -138,8 +137,7 @@ public class NativeObfuscator {
 
         File jarFile = inputJarPath.toAbsolutePath().toFile();
         try (JarFile jar = new JarFile(jarFile);
-             ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(outputDir.resolve(jarFile.getName())));
-             ZipOutputStream outDebug = new ZipOutputStream(Files.newOutputStream(outputDir.resolve("debug-" + jarFile.getName())))) {
+             ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(outputDir.resolve(jarFile.getName())))) {
 
             logger.info("Processing {}...", jarFile);
 
@@ -173,29 +171,23 @@ public class NativeObfuscator {
                     nativeMethods = new StringBuilder();
 
                     ClassReader classReader = new ClassReader(src);
-                    ClassNode rawClassNode = new ClassNode(Opcodes.ASM7);
-                    classReader.accept(rawClassNode, 0);
+                    ClassNode classNode = new ClassNode(Opcodes.ASM7);
+                    classReader.accept(classNode, 0);
 
-                    if (rawClassNode.methods.stream().noneMatch(MethodProcessor::shouldProcess) ||
-                            blackList.contains(rawClassNode.name) || (whiteList != null && !whiteList.contains(rawClassNode.name))) {
-                        logger.info("Skipping {}", rawClassNode.name);
+                    if (classNode.methods.stream().noneMatch(MethodProcessor::shouldProcess) ||
+                            blackList.contains(classNode.name) || (whiteList != null && !whiteList.contains(classNode.name))) {
+                        logger.info("Skipping {}", classNode.name);
                         Util.writeEntry(out, entry.getName(), src);
-                        Util.writeEntry(outDebug, entry.getName(), src);
+                        // Util.writeEntry(outDebug, entry.getName(), src);
                         return;
                     }
 
-                    logger.info("Preprocessing {}", rawClassNode.name);
+                    /* logger.info("Preprocessing {}", rawClassNode.name);
 
                     rawClassNode.methods.stream().filter(MethodProcessor::shouldProcess)
-                            .forEach(methodNode -> methodNode.instructions.insertBefore(methodNode.instructions.get(0),
-                                    new MethodInsnNode(Opcodes.INVOKESTATIC, "java/lang/Thread",
-                                            "dumpStack", "()V")));
-
-                    {
-                        ClassWriter preprocessorClassWriter = new SafeClassWriter(metadataReader, Opcodes.ASM7);
-                        rawClassNode.accept(preprocessorClassWriter);
-                        Util.writeEntry(outDebug, entry.getName(), preprocessorClassWriter.toByteArray());
-                    }
+                            .forEach(methodNode -> {
+                                methodNode.instructions.insertBefore(methodNode);
+                            });
 
                     rawClassNode.methods.stream().filter(MethodProcessor::shouldProcess)
                             .forEach(methodNode -> Preprocessor.preprocess(rawClassNode, methodNode, platform));
@@ -205,6 +197,10 @@ public class NativeObfuscator {
                     classReader = new ClassReader(preprocessorClassWriter.toByteArray());
                     ClassNode classNode = new ClassNode(Opcodes.ASM7);
                     classReader.accept(classNode, 0);
+
+                    if (classNode.name.contains("Main")) {
+                        Files.write(Paths.get("test.class"), preprocessorClassWriter.toByteArray());
+                    } */
 
                     logger.info("Processing {}", classNode.name);
 
@@ -320,14 +316,19 @@ public class NativeObfuscator {
             resultLoaderClass.accept(classWriter);
             Util.writeEntry(out, loaderClassName + ".class", classWriter.toByteArray());
 
+            ClassNode invokeDynamicPlaceholderClass = new ClassNode(Opcodes.ASM7);
+            invokeDynamicPlaceholderClass.name = nativeDir + "/InvokeDynamicPlaceholder";
+            ClassWriter invokeDynamicPlaceholderClassWriter =
+                    new SafeClassWriter(metadataReader, Opcodes.ASM7 | ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+            invokeDynamicPlaceholderClass.accept(invokeDynamicPlaceholderClassWriter);
+            Util.writeEntry(out, invokeDynamicPlaceholderClass.name
+                    + ".class", classWriter.toByteArray());
+
             logger.info("Jar file ready!");
             Manifest mf = jar.getManifest();
-            if (mf != null) {
-                out.putNextEntry(new ZipEntry(JarFile.MANIFEST_NAME));
+            out.putNextEntry(new ZipEntry(JarFile.MANIFEST_NAME));
+            if (mf != null)
                 mf.write(out);
-                outDebug.putNextEntry(new ZipEntry(JarFile.MANIFEST_NAME));
-                mf.write(outDebug);
-            }
             out.closeEntry();
             metadataReader.close();
         }
