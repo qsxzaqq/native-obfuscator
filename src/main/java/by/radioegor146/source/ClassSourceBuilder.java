@@ -43,6 +43,8 @@ public class ClassSourceBuilder implements AutoCloseable {
         cppWriter.append("namespace native_jvm::classes::__ngen_").append(filename).append(" {\n\n");
         cppWriter.append("    char *string_pool;\n\n");
 
+        strings += 1;
+
         if (strings > 0) {
             cppWriter.append(String.format("    jstring cstrings[%d];\n", strings));
         }
@@ -110,6 +112,7 @@ public class ClassSourceBuilder implements AutoCloseable {
         }
 
         if (!staticClassProvider.isEmpty()) {
+            cppWriter.append("        jobject classloader = utils::get_classloader_from_class(env, clazz);\n");
             cppWriter.append("        JNINativeMethod __ngen_static_iface_methods[] = {\n");
             cppWriter.append(staticClassProvider.getMethods());
             cppWriter.append("        };\n\n");

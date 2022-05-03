@@ -18,7 +18,7 @@ public class NodeCache<T> {
     }
 
     public int getId(T key) {
-        if(!cache.containsKey(key)) {
+        if (!cache.containsKey(key)) {
             cache.put(key, cache.size());
         }
         return cache.get(key);
