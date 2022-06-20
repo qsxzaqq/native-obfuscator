@@ -56,7 +56,7 @@ public class MethodProcessor {
         this.obfuscator = obfuscator;
 
         handlers = new InstructionHandlerContainer[16];
-        addHandler(AbstractInsnNode.INSN, new InsnHandler(), InsnNode.class);
+     /*   addHandler(AbstractInsnNode.INSN, new InsnHandler(), InsnNode.class);
         addHandler(AbstractInsnNode.INT_INSN, new IntHandler(), IntInsnNode.class);
         addHandler(AbstractInsnNode.VAR_INSN, new VarHandler(), VarInsnNode.class);
         addHandler(AbstractInsnNode.TYPE_INSN, new TypeHandler(), TypeInsnNode.class);
@@ -71,7 +71,7 @@ public class MethodProcessor {
         addHandler(AbstractInsnNode.LOOKUPSWITCH_INSN, new LookupSwitchHandler(), LookupSwitchInsnNode.class);
         addHandler(AbstractInsnNode.MULTIANEWARRAY_INSN, new MultiANewArrayHandler(), MultiANewArrayInsnNode.class);
         addHandler(AbstractInsnNode.FRAME, new FrameHandler(), FrameNode.class);
-        addHandler(AbstractInsnNode.LINE, new LineNumberHandler(), LineNumberNode.class);
+        addHandler(AbstractInsnNode.LINE, new LineNumberHandler(), LineNumberNode.class);*/
     }
 
     private <T extends AbstractInsnNode> void addHandler(int id, InstructionTypeHandler<T> handler, Class<T> instructionClass) {
@@ -151,7 +151,7 @@ public class MethodProcessor {
                     obfuscator.getStringPool().get(method.desc), methodName));
         }
 
-        output.append(String.format("%s JNICALL %s(JNIEnv *env, ", CPP_TYPES[context.ret.getSort()], methodName));
+        output.append(String.format("fn %s(JNIEnv *env, ", methodName));
         output.append(isStatic ? "jclass clazz" : "jobject obj");
 
         ArrayList<String> argNames = new ArrayList<>();
@@ -162,7 +162,7 @@ public class MethodProcessor {
             output.append(String.format(", %s arg%d", CPP_TYPES[args[i].getSort()], i));
         }
 
-        output.append(") {").append("\n");
+        output.append(String.format(") -> %s {", CPP_TYPES[context.ret.getSort()])).append("\n");
 
         if (!isStatic) {
             output.append("    jclass clazz = utils::get_class_from_object(env, obj);\n");
@@ -247,6 +247,9 @@ public class MethodProcessor {
 
         for (int instruction = 0; instruction < method.instructions.size(); ++instruction) {
             AbstractInsnNode node = method.instructions.get(instruction);
+            if (handlers[node.getType()] == null)
+                continue;
+
             context.output.append("    // ").append(Util.escapeCommentString(handlers[node.getType()]
                     .insnToString(context, node))).append("; Stack: ").append(context.stackPointer).append("\n");
             handlers[node.getType()].accept(context, node);

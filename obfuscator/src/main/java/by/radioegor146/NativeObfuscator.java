@@ -233,7 +233,7 @@ public class NativeObfuscator {
 
                             MethodContext context = new MethodContext(this, method, i, classNode, currentClassId);
                             methodProcessor.processMethod(context);
-                            instructions.append(context.output.toString().replace("\n", "\n    "));
+                            instructions.append(context.output); //.toString().replace("\n", "\n    ")
 
                             nativeMethods.append(context.nativeMethods);
 
@@ -260,10 +260,9 @@ public class NativeObfuscator {
                         cppBuilder.addInstructions(instructions.toString());
                         cppBuilder.registerMethods(cachedStrings, cachedClasses, nativeMethods.toString(), staticClassProvider);
 
-                        cMakeBuilder.addClassFile("output/" + cppBuilder.getHppFilename());
-                        cMakeBuilder.addClassFile("output/" + cppBuilder.getCppFilename());
+                        cMakeBuilder.addClassFile("output/" + cppBuilder.getRsFilename());
 
-                        mainSourceBuilder.addHeader(cppBuilder.getHppFilename());
+                        mainSourceBuilder.addHeader(cppBuilder.getRsFilename());
                         mainSourceBuilder.registerClassMethods(currentClassId, cppBuilder.getFilename());
                     }
 

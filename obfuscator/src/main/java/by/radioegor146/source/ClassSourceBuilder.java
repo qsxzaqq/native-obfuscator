@@ -14,10 +14,10 @@ import java.util.Map;
 
 public class ClassSourceBuilder implements AutoCloseable {
 
-    private final Path cppFile;
-    private final Path hppFile;
-    private final BufferedWriter cppWriter;
-    private final BufferedWriter hppWriter;
+    //RUST
+    private final Path rsFile;
+    private final BufferedWriter rsWriter;
+    
     private final String className;
     private final String filename;
 
@@ -28,40 +28,46 @@ public class ClassSourceBuilder implements AutoCloseable {
         this.stringPool = stringPool;
         filename = String.format("%s_%d", Util.escapeCppNameString(className.replace('/', '_')), classIndex);
 
-        cppFile = cppOutputDir.resolve(filename.concat(".cpp"));
-        hppFile = cppOutputDir.resolve(filename.concat(".hpp"));
-        cppWriter = Files.newBufferedWriter(cppFile, StandardCharsets.UTF_8);
-        hppWriter = Files.newBufferedWriter(hppFile, StandardCharsets.UTF_8);
+        rsFile = cppOutputDir.resolve(filename.concat(".rs"));
+        rsWriter = Files.newBufferedWriter(rsFile, StandardCharsets.UTF_8);
     }
 
+    /****
+     * Class to rs文件生成
+     * @param strings
+     * @param classes
+     * @param methods
+     * @param fields
+     * @throws IOException
+     */
     public void addHeader(int strings, int classes, int methods, int fields) throws IOException {
-        cppWriter.append("#include \"../native_jvm.hpp\"\n");
-        cppWriter.append("#include \"../string_pool.hpp\"\n");
-        cppWriter.append("#include \"").append(getHppFilename()).append("\"\n");
-        cppWriter.append("\n");
-        cppWriter.append("// ").append(Util.escapeCommentString(className)).append("\n");
-        cppWriter.append("namespace native_jvm::classes::__ngen_").append(filename).append(" {\n\n");
-        cppWriter.append("    char *string_pool;\n\n");
+//        rsWriter.append("#include \"../native_jvm.hpp\"\n");
+//        rsWriter.append("#include \"../string_pool.hpp\"\n");
+//        rsWriter.append("#include \"").append(getRsFilename()).append("\"\n");
+//        rsWriter.append("\n");
+        rsWriter.append("// ").append(Util.escapeCommentString(className)).append("\n");
+        //rsWriter.append("namespace native_jvm::classes::__ngen_").append(filename).append(" {\n\n");
+        //rsWriter.append("    char *string_pool;\n\n");
 
         if (strings > 0) {
-            cppWriter.append(String.format("    jstring cstrings[%d];\n", strings));
+            rsWriter.append(String.format("    jstring cstrings[%d];\n", strings));
         }
         if (classes > 0) {
-            cppWriter.append(String.format("    std::mutex cclasses_mtx[%d];\n", classes));
-            cppWriter.append(String.format("    jclass cclasses[%d];\n", classes));
+            rsWriter.append(String.format("    std::mutex cclasses_mtx[%d];\n", classes));
+            rsWriter.append(String.format("    jclass cclasses[%d];\n", classes));
         }
         if (methods > 0) {
-            cppWriter.append(String.format("    jmethodID cmethods[%d];\n", methods));
+            rsWriter.append(String.format("    jmethodID cmethods[%d];\n", methods));
         }
         if (fields > 0) {
-            cppWriter.append(String.format("    jfieldID cfields[%d];\n", fields));
+            rsWriter.append(String.format("    jfieldID cfields[%d];\n", fields));
         }
 
-        cppWriter.append("\n");
-        cppWriter.append("    ");
+        rsWriter.append("\n");
+        rsWriter.append("    ");
 
 
-        hppWriter.append("#include \"../native_jvm.hpp\"\n");
+   /*     hppWriter.append("#include \"../native_jvm.hpp\"\n");
         hppWriter.append("\n");
         hppWriter.append("#ifndef ").append(filename.concat("_hpp").toUpperCase()).append("_GUARD\n");
         hppWriter.append("\n");
@@ -70,79 +76,71 @@ public class ClassSourceBuilder implements AutoCloseable {
         hppWriter.append("// ").append(Util.escapeCommentString(className)).append("\n");
         hppWriter.append("namespace native_jvm::classes::__ngen_")
                 .append(filename)
-                .append(" {\n\n");
+                .append(" {\n\n");*/
     }
 
     public void addInstructions(String instructions) throws IOException {
-        cppWriter.append(instructions);
-        cppWriter.append("\n");
+        rsWriter.append(instructions);
+        rsWriter.append("\n");
     }
 
     public void registerMethods(NodeCache<String> strings, NodeCache<String> classes, String nativeMethods,
                                 InterfaceStaticClassProvider staticClassProvider) throws IOException {
 
-        cppWriter.append("    void __ngen_register_methods(JNIEnv *env, jclass clazz) {\n");
-        cppWriter.append("        string_pool = string_pool::get_pool();\n\n");
+        rsWriter.append("    void __ngen_register_methods(JNIEnv *env, jclass clazz) {\n");
+        rsWriter.append("        string_pool = string_pool::get_pool();\n\n");
 
         for (Map.Entry<String, Integer> string : strings.getCache().entrySet()) {
-            cppWriter.append("        if (jstring str = env->NewStringUTF(").append(stringPool.get(string.getKey())).append(")) { if (jstring int_str = utils::get_interned(env, str)) { ")
+            rsWriter.append("        if (jstring str = env->NewStringUTF(").append(stringPool.get(string.getKey())).append(")) { if (jstring int_str = utils::get_interned(env, str)) { ")
                     .append(String.format("cstrings[%d] = ", string.getValue()))
                     .append("(jstring) env->NewGlobalRef(int_str); env->DeleteLocalRef(str); env->DeleteLocalRef(int_str); } }\n");
         }
 
         if (!classes.isEmpty()) {
-            cppWriter.append("\n");
+            rsWriter.append("\n");
         }
 
         if (!nativeMethods.isEmpty()) {
-            cppWriter.append("        JNINativeMethod __ngen_methods[] = {\n");
-            cppWriter.append(nativeMethods);
-            cppWriter.append("        };\n\n");
-            cppWriter.append("        if (clazz) env->RegisterNatives(clazz, __ngen_methods, sizeof(__ngen_methods) / sizeof(__ngen_methods[0]));\n");
-            cppWriter.append("        if (env->ExceptionCheck()) { fprintf(stderr, \"Exception occured while registering native_jvm for %s\\n\", ")
+            rsWriter.append("        JNINativeMethod __ngen_methods[] = {\n");
+            rsWriter.append(nativeMethods);
+            rsWriter.append("        };\n\n");
+            rsWriter.append("        if (clazz) env->RegisterNatives(clazz, __ngen_methods, sizeof(__ngen_methods) / sizeof(__ngen_methods[0]));\n");
+            rsWriter.append("        if (env->ExceptionCheck()) { fprintf(stderr, \"Exception occured while registering native_jvm for %s\\n\", ")
                     .append(stringPool.get(className.replace('/', '.')))
                     .append("); fflush(stderr); env->ExceptionDescribe(); env->ExceptionClear(); }\n");
-            cppWriter.append("\n");
+            rsWriter.append("\n");
         }
 
         if (!staticClassProvider.isEmpty()) {
-            cppWriter.append("        jobject classloader = utils::get_classloader_from_class(env, clazz);\n");
-            cppWriter.append("        JNINativeMethod __ngen_static_iface_methods[] = {\n");
-            cppWriter.append(staticClassProvider.getMethods());
-            cppWriter.append("        };\n\n");
-            cppWriter.append("        jclass iface_methods_clazz = utils::find_class_wo_static(env, classloader, ")
+            rsWriter.append("        jobject classloader = utils::get_classloader_from_class(env, clazz);\n");
+            rsWriter.append("        JNINativeMethod __ngen_static_iface_methods[] = {\n");
+            rsWriter.append(staticClassProvider.getMethods());
+            rsWriter.append("        };\n\n");
+            rsWriter.append("        jclass iface_methods_clazz = utils::find_class_wo_static(env, classloader, ")
                     .append(strings.getPointer(staticClassProvider.getCurrentClassName().replace('/', '.'))).append(");\n");
-            cppWriter.append("        if (iface_methods_clazz) env->RegisterNatives(iface_methods_clazz, __ngen_static_iface_methods, sizeof(__ngen_static_iface_methods) / sizeof(__ngen_static_iface_methods[0]));\n");
-            cppWriter.append("        if (env->ExceptionCheck()) { fprintf(stderr, \"Exception occured while registering native_jvm for %s\\n\", ")
+            rsWriter.append("        if (iface_methods_clazz) env->RegisterNatives(iface_methods_clazz, __ngen_static_iface_methods, sizeof(__ngen_static_iface_methods) / sizeof(__ngen_static_iface_methods[0]));\n");
+            rsWriter.append("        if (env->ExceptionCheck()) { fprintf(stderr, \"Exception occured while registering native_jvm for %s\\n\", ")
                     .append(stringPool.get(className.replace('/', '.')))
                     .append("); fflush(stderr); env->ExceptionDescribe(); env->ExceptionClear(); }\n");
         }
-        cppWriter.append("    }\n");
-        cppWriter.append("}");
+        rsWriter.append("    }\n");
+        rsWriter.append("}");
 
 
-        hppWriter.append("    void __ngen_register_methods(JNIEnv *env, jclass clazz);\n");
-        hppWriter.append("}\n\n#endif");
+        //hppWriter.append("    void __ngen_register_methods(JNIEnv *env, jclass clazz);\n");
+        //hppWriter.append("}\n\n#endif");
     }
 
     public String getFilename() {
         return filename;
     }
 
-    public String getHppFilename() {
-        return hppFile.getFileName().toString();
-    }
-
-    public String getCppFilename() {
-        return cppFile.getFileName().toString();
+    public String getRsFilename() {
+        return rsFile.getFileName().toString();
     }
 
     @Override
     public void close() throws IOException {
-        try {
-            cppWriter.close();
-        } finally {
-            hppWriter.close();
-        }
+        rsWriter.close();
     }
 }
